@@ -32,8 +32,9 @@ So there is **no C wrapper** — Python loads the library and calls those direct
 
 ## Using it
 
-1. Push this repo to GitHub. The Actions run builds all three binaries and publishes
-   them to a Release tagged `latest`.
+1. Push this repo to GitHub (`github.com/codejq/RNNoiseCancellation`). The Actions run
+   builds all three binaries and publishes them to a Release tagged `latest`:
+   <https://github.com/codejq/RNNoiseCancellation/releases/tag/latest>
 2. Download the three files into `python/lib/`.
 3. Test on the dev PC:
 
