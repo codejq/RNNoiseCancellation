@@ -15,6 +15,22 @@ MAYA runs on, exactly like `webrtc-aec`:
 | Linux x86_64    | `librnnoise-linux-x86_64.so`      | x86 Linux / WSL      |
 | Linux aarch64   | `librnnoise-linux-aarch64.so`     | the Pi 5 / Jetson    |
 
+## Status
+
+✅ **Built and verified.** All three binaries are published — and the Windows DLL is
+confirmed loading and denoising on the dev PC.
+
+> **Where are the binaries?** They are **not** in the repo file tree — they live on the
+> **Releases** page (tag `latest`), attached by the CI run:
+> <https://github.com/codejq/RNNoiseCancellation/releases/tag/latest>
+>
+> - [librnnoise-windows-x64.dll](https://github.com/codejq/RNNoiseCancellation/releases/download/latest/librnnoise-windows-x64.dll)
+> - [librnnoise-linux-x86_64.so](https://github.com/codejq/RNNoiseCancellation/releases/download/latest/librnnoise-linux-x86_64.so)
+> - [librnnoise-linux-aarch64.so](https://github.com/codejq/RNNoiseCancellation/releases/download/latest/librnnoise-linux-aarch64.so)
+>
+> Download the one(s) you need into `python/lib/`. Every push to `master` rebuilds and
+> refreshes this same `latest` release.
+
 ## How it's built
 
 GitHub Actions (`.github/workflows/build.yml`) builds RNNoise with **its own
