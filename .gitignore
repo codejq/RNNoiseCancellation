@@ -1,0 +1,12 @@
+# Built binaries land here after the CI run; keep the folder, ignore the libs.
+python/lib/*.dll
+python/lib/*.so
+python/lib/*.dylib
+
+# Test output
+*.wav
+
+# Python
+__pycache__/
+*.pyc
+.venv/

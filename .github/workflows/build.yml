@@ -1,0 +1,108 @@
+name: build-rnnoise
+
+# Builds the RNNoise shared library for every platform MAYA runs on:
+#   - Windows x64   (the dev PC)        — MSYS2 / MinGW autotools
+#   - Linux x86_64  (x86 Linux / WSL)   — gcc autotools
+#   - Linux aarch64 (the Pi 5 / Jetson) — gcc autotools (native arm runner)
+# RNNoise's own autotools build downloads the model, generates config.h, and
+# exports the public C ABI, so no wrapper is needed. The artifacts are published
+# to a Release tagged "latest"; drop them into python/lib/.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to publish the binaries to a GitHub Release
+
+env:
+  RNNOISE_REPO: "https://github.com/xiph/rnnoise.git"
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-x86_64,  os: ubuntu-24.04 }
+          - { name: linux-aarch64, os: ubuntu-24.04-arm }
+          - { name: windows-x64,   os: windows-2022 }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Linux: gcc + autotools ───────────────────────────────────────────────
+      - name: Linux build
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake libtool pkg-config gcc make curl
+          git clone --depth 1 "$RNNOISE_REPO" rnnoise
+          cd rnnoise
+          ./autogen.sh                 # fetches the model + runs autoreconf
+          ./configure --disable-examples --disable-doc CFLAGS="-O3 -fvisibility=default"
+          make -j"$(nproc)"
+          cd ..
+          mkdir -p out
+          # Resolve the libtool symlink to the real .so and give it a stable name.
+          cp -L rnnoise/.libs/librnnoise.so "out/librnnoise-${{ matrix.name }}.so"
+          file "out/librnnoise-${{ matrix.name }}.so"
+
+      # ── Windows: MSYS2 / MinGW + autotools ──────────────────────────────────
+      - name: Windows toolchain (MSYS2)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel git autoconf automake libtool make curl
+            mingw-w64-x86_64-gcc mingw-w64-x86_64-pkg-config
+
+      - name: Windows build
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 "$RNNOISE_REPO" rnnoise
+          cd rnnoise
+          ./autogen.sh
+          # -static-libgcc so the DLL has no MinGW runtime dependency (rnnoise
+          # uses no threads, so no libwinpthread either).
+          ./configure --disable-examples --disable-doc CFLAGS="-O3" LDFLAGS="-static-libgcc"
+          make -j"$(nproc)"
+          cd ..
+          mkdir -p out
+          dll="$(ls rnnoise/.libs/librnnoise*.dll | head -1)"
+          echo "built DLL: $dll"
+          cp "$dll" out/librnnoise-windows-x64.dll
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: librnnoise-${{ matrix.name }}
+          path: out/*
+          if-no-files-found: error
+
+  # Publish all three binaries to a single, always-current "latest" Release.
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: "Publish to Releases (tag latest)"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "rnnoise binaries (latest)"
+          body: "RNNoise shared libraries for Windows x64, Linux x86_64, and Linux aarch64. Drop into RNNoise/python/lib/."
+          files: dist/**

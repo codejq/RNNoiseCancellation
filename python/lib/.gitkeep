@@ -1,0 +1,2 @@
+Built binaries (librnnoise-*.dll / .so) are downloaded here from the GitHub
+Actions "build-rnnoise" Release (tag: latest). They are gitignored.
